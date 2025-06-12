@@ -17,6 +17,7 @@ from googleapiclient.http import MediaFileUpload
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID")
 SHEET_ID = os.environ.get("SHEET_ID")
+WORKSHEET_NAME = 'Master_Data'
 GOOGLE_CREDS_JSON_STRING = os.environ.get("GOOGLE_CREDS_JSON_STRING")
 
 genai.configure(api_key=GEMINI_API_KEY)
