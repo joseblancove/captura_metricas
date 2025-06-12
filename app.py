@@ -1,4 +1,4 @@
-# app.py - VERSIÓN 13 (FINAL PARA PRODUCCIÓN - LEE VARIABLES DE ENTORNO)
+# app.py - VERSIÓN 13.1 (CORRECCIÓN FINAL DE CREDENCIALES DE DRIVE)
 import os
 import json
 import datetime
@@ -9,24 +9,18 @@ from google.generativeai.types import GenerationConfig
 from google.api_core import exceptions as google_exceptions
 import PIL.Image
 import gspread
-# Ya no necesitamos oauth2client, usaremos la librería de google-auth directamente
-from google.oauth2 import service_account
+from google.oauth2 import service_account # Usaremos esta librería para ambas credenciales
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
 # --- 1. CONFIGURACIÓN DE PRODUCCIÓN ---
-# Leemos los secretos desde las Variables de Entorno que configuraste en Render
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 DRIVE_FOLDER_ID = os.environ.get("DRIVE_FOLDER_ID")
 SHEET_ID = os.environ.get("SHEET_ID")
-# Leemos el contenido del JSON de credenciales desde la variable de entorno
 GOOGLE_CREDS_JSON_STRING = os.environ.get("GOOGLE_CREDS_JSON_STRING")
 
-# Configuramos la API de Gemini
 genai.configure(api_key=GEMINI_API_KEY)
 
-# Convertimos el string JSON de la variable de entorno a un diccionario de Python
-# Esto reemplaza la necesidad de tener el archivo .json físico
 GOOGLE_CREDS_DICT = json.loads(GOOGLE_CREDS_JSON_STRING)
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 
@@ -36,26 +30,29 @@ UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# --- FUNCIONES AUXILIARES ---
+# --- FUNCIÓN DE DRIVE CON LA CORRECCIÓN APLICADA ---
 def create_drive_folder_and_upload(files_to_upload, folder_name):
     try:
-        # Usamos las credenciales cargadas desde el diccionario
+        # ¡CORRECCIÓN! Ahora usa from_service_account_info para leer del diccionario
         creds = service_account.Credentials.from_service_account_info(GOOGLE_CREDS_DICT, scopes=SCOPES)
         service = build('drive', 'v3', credentials=creds)
+        
         folder_metadata = {'name': folder_name, 'parents': [DRIVE_FOLDER_ID], 'mimeType': 'application/vnd.google-apps.folder'}
         folder = service.files().create(body=folder_metadata, fields='id, webViewLink').execute()
         new_folder_id = folder.get('id')
         folder_link = folder.get('webViewLink')
+        
         for filepath, filename in files_to_upload:
             file_metadata = {'name': filename, 'parents': [new_folder_id]}
             media = MediaFileUpload(filepath, mimetype='image/png', resumable=True)
             service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        
         return folder_link
     except Exception as e:
         print(f"Error al interactuar con Drive: {e}")
         return None
 
-# --- RUTAS DE LA APLICACIÓN ---
+# --- 3. RUTAS DE LA APLICACIÓN ---
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -88,7 +85,7 @@ def upload_file():
         consolidated_metrics = json.loads(response.text)
         
         # ... (lógica para subir a Drive no cambia) ...
-        folder_name = f"{campaign} - {influencer} - {content_id or 'General'}-{datetime.now().strftime('%Y%m%d')}"
+        folder_name = f"{campaign} - {influencer} - {content_id or 'General'}-{datetime.datetime.now().strftime('%Y%m%d')}"
         drive_folder_link = create_drive_folder_and_upload(files_for_drive, folder_name)
 
         # --- Conexión a Google Sheets usando el diccionario de credenciales ---
@@ -98,7 +95,7 @@ def upload_file():
         
         # ... (lógica para crear la fila y guardarla no cambia) ...
         new_row = [
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"), campaign, influencer,
+            datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), campaign, influencer,
             platform, format_type, content_id,
             consolidated_metrics.get('likes'), consolidated_metrics.get('comments'),
             consolidated_metrics.get('shares'), consolidated_metrics.get('saves'),
@@ -108,7 +105,7 @@ def upload_file():
         ]
         sheet.append_row(new_row, table_range="A1")
 
-        return jsonify({'status': 'success', 'message': 'Lote procesado y consolidado con éxito.'}), 200
+        return jsonify({'status': 'success', 'message': 'Lote procesado, subido a Drive y guardado en Sheets.'}), 200
 
     except google_exceptions.RetryError as e:
         return jsonify({'status': 'error', 'message': 'El servicio de IA está sobrecargado. Inténtalo más tarde.'}), 503
@@ -117,6 +114,5 @@ def upload_file():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    # Esta parte le dice a Render en qué puerto debe funcionar
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
