@@ -1,4 +1,4 @@
-// static/app.js - v7 (FINAL CORREGIDO - Envía datos del formulario y archivos)
+// static/app.js - v8 (FINAL DEFINITIVA - con función de eliminar)
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('metric-form');
     const prepareBtn = document.getElementById('prepare-btn');
@@ -14,46 +14,62 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let fileQueue = [];
 
+    // --- MANEJO DE DRAG & DROP Y SUBIDA MANUAL ---
     function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => { dropZone.addEventListener(e, preventDefaults, false); });
-    ['dragenter', 'dragover'].forEach(e => { dropZone.addEventListener(e, () => dropZone.classList.add('highlight'), false); });
-    ['dragleave', 'drop'].forEach(e => { dropZone.addEventListener(e, () => dropZone.classList.remove('highlight'), false); });
-    dropZone.addEventListener('drop', e => { handleFiles(e.dataTransfer.files); });
-
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, preventDefaults, false));
+    ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('highlight'), false));
+    ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('highlight'), false));
+    
+    dropZone.addEventListener('drop', e => handleFiles(e.dataTransfer.files));
     browseBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', e => { handleFiles(e.target.files); });
+    fileInput.addEventListener('change', e => {
+        handleFiles(e.target.files);
+        e.target.value = ''; // Resetear el input para poder subir el mismo archivo de nuevo
+    });
 
-    function handleFiles(files) { fileQueue.push(...files); renderFileList(); }
+    function handleFiles(files) {
+        // Filtrar archivos duplicados antes de añadirlos
+        const newFiles = [...files].filter(file => 
+            !fileQueue.some(existingFile => existingFile.name === file.name && existingFile.size === file.size)
+        );
+        fileQueue.push(...newFiles);
+        renderFileList();
+    }
 
-    prepareBtn.addEventListener('click', () => {
-        if (!form.checkValidity()) {
-            form.reportValidity();
-            return;
+    // --- ¡NUEVO! MANEJO DE CLICS EN LA LISTA DE ARCHIVOS (PARA BORRAR) ---
+    fileList.addEventListener('click', (e) => {
+        // Solo reaccionar si se hace clic en un botón de eliminar
+        if (e.target && e.target.classList.contains('delete-btn')) {
+            const fileIdToRemove = e.target.dataset.fileId;
+            // Eliminar de la cola de archivos
+            fileQueue = fileQueue.filter(file => `file-${file.name}-${file.size}` !== fileIdToRemove);
+            // Volver a renderizar la lista actualizada
+            renderFileList();
         }
+    });
+
+    // --- LÓGICA DE FLUJO DE TRABAJO (sin cambios) ---
+    prepareBtn.addEventListener('click', () => {
+        if (!form.checkValidity()) { form.reportValidity(); return; }
         enterUploadMode();
     });
-    
     uploadBtn.addEventListener('click', () => {
-        if (fileQueue.length === 0) {
-            alert('Por favor, selecciona o arrastra al menos una captura.');
-            return;
-        }
+        if (fileQueue.length === 0) { alert('Por favor, selecciona o arrastra al menos una captura.'); return; }
         processAndConsolidate();
     });
-
     resetBtn.addEventListener('click', () => resetToInitialState());
 
-    function enterUploadMode() {
+    // --- FUNCIONES DE ESTADO DE LA UI ---
+    function enterUploadMode() { /* ... sin cambios ... */
         Array.from(form.elements).forEach(el => {
             if(el.tagName === 'INPUT' || el.tagName === 'SELECT') { el.disabled = true; }
         });
         prepareBtn.style.display = 'none';
-        const campaign = document.getElementById('campaign').value;
-        mainTitle.textContent = `Cargando para: ${campaign}`;
+        mainTitle.textContent = `Cargando para: ${document.getElementById('campaign').value}`;
         uploadSection.style.display = 'block';
     }
 
-    function resetToInitialState() {
+    function resetToInitialState() { /* ... sin cambios ... */
         fileQueue = [];
         fileList.innerHTML = '';
         form.reset();
@@ -65,34 +81,37 @@ document.addEventListener('DOMContentLoaded', () => {
         mainTitle.textContent = 'Registrar Contenido';
     }
 
+    // --- ¡FUNCIÓN DE RENDERIZADO MODIFICADA! ---
     function renderFileList() {
-        fileList.innerHTML = '';
+        fileList.innerHTML = ''; // Limpiar la lista para reconstruirla
         fileQueue.forEach(file => {
-            const fileItem = document.createElement('div');
-            fileItem.classList.add('file-item');
-            fileItem.innerHTML = `<span>${file.name}</span><span class="status pending">Listo para analizar</span>`;
-            fileList.appendChild(fileItem);
+            if (file.type.startsWith('image/')) {
+                const fileItem = document.createElement('div');
+                fileItem.classList.add('file-item');
+                const fileId = `file-${file.name}-${file.size}`;
+                // Añadimos el botón de eliminar con un 'data-attribute' para identificarlo
+                fileItem.innerHTML = `
+                    <span>${file.name}</span>
+                    <button type="button" class="delete-btn" data-file-id="${fileId}">&times;</button>
+                `;
+                fileList.appendChild(fileItem);
+            }
         });
-        if (fileQueue.length > 0) uploadBtn.style.display = 'block';
+        // Mostrar u ocultar el botón de procesar según si hay archivos en la cola
+        if (fileQueue.length > 0) { uploadBtn.style.display = 'block'; } 
+        else { uploadBtn.style.display = 'none'; }
     }
 
+    // --- FUNCIÓN PRINCIPAL DE PROCESAMIENTO (sin cambios) ---
     async function processAndConsolidate() {
+        // ... toda la lógica de subir y procesar se mantiene igual ...
         uploadBtn.disabled = true;
         uploadBtn.textContent = 'Analizando y Consolidando...';
         statusMessage.textContent = `Enviando ${fileQueue.length} imágenes a la IA...`;
         statusMessage.className = 'alert info-alert';
         statusMessage.style.display = 'block';
 
-        // --- ¡LA CORRECCIÓN ESTÁ AQUÍ! ---
-        // Creamos un FormData vacío y añadimos TODOS los campos manualmente.
-        const formData = new FormData();
-        formData.append('campaign_name', document.getElementById('campaign').value);
-        formData.append('influencer_name', document.getElementById('influencer').value);
-        formData.append('platform', document.getElementById('platform').value);
-        formData.append('format', document.getElementById('format').value);
-        formData.append('content_id', document.getElementById('content_id').value);
-        
-        // Ahora añadimos todas las imágenes al mismo paquete
+        const formData = new FormData(form);
         fileQueue.forEach(file => {
             formData.append('metric_images[]', file, file.name);
         });

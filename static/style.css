@@ -188,3 +188,30 @@ button:hover {
     font-weight: 600;
     color: rgba(255, 255, 255, 0.5);
 }
+
+/* --- Estilos para el botón de eliminar archivo --- */
+.file-item {
+    position: relative; /* Necesario para posicionar el botón de eliminar */
+    padding-right: 2.5rem; /* Hacemos espacio para el botón X */
+}
+
+.delete-btn {
+    position: absolute;
+    top: 50%;
+    right: 0.75rem;
+    transform: translateY(-50%);
+    
+    background-color: transparent;
+    border: none;
+    color: #a1a1aa; /* Un gris sutil */
+    font-size: 1.5rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0 0.5rem;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.delete-btn:hover {
+    color: #ef4444; /* Rojo al pasar el ratón */
+}
