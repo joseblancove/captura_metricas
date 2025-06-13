@@ -74,7 +74,20 @@ def upload_file():
 
         # ... (lógica de Gemini no cambia) ...
         content_for_ai, files_for_drive = [], []
-        prompt = """INSTRUCCIÓN CRÍTICA: Eres un analista de datos experto... (mismo prompt final)"""
+        prompt = f"""
+INSTRUCCIÓN CRÍTICA: Recibirás un lote de {len(image_files)} imágenes que pertenecen a la MISMA publicación o contenido. Tu tarea es actuar como un analista de datos y consolidar toda la información que encuentres en UN ÚNICO objeto JSON.
+
+REGLAS DE CONSOLIDACIÓN:
+1. Examina TODAS las imágenes antes de responder.
+2. Si una misma métrica (ej: 'likes') aparece en varias imágenes, utiliza el valor numérico más alto y más completo que encuentres.
+3. Rellena cada campo del JSON con la mejor información disponible entre todas las imágenes.
+4. ¡IMPORTANTE! Convierte siempre abreviaturas ('K', 'M') a números completos (ej: 2.5K a 2500, 1.2M a 1200000).
+5. Si después de examinar todas las imágenes, no encuentras NINGUNA métrica, debes explicar por qué en el campo 'extraction_notes'. Por ejemplo: "Las imágenes no contienen contadores numéricos visibles de métricas."
+6. Tu respuesta DEBE ser ÚNICAMENTE el objeto JSON, sin ningún otro texto.
+
+El formato requerido es:
+{{"likes": null, "comments": null, "shares": null, "saves": null, "views": null, "reach": null, "extraction_notes": "Extracción exitosa."}}
+"""
         content_for_ai.append(prompt)
         for image_file in image_files:
             filepath = os.path.join(UPLOAD_FOLDER, image_file.filename)
