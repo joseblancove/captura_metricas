@@ -92,7 +92,6 @@ def upload_file():
     filepaths_to_delete = []
     try:
         print("--- NUEVO ENVÍO RECIBIDO ---")
-        # --- Obtención de datos del formulario ---
         client_name = request.form['client_name']
         campaign_name = request.form['campaign_name']
         influencer_name = request.form['influencer_name']
@@ -105,7 +104,6 @@ def upload_file():
         if not image_files:
             return jsonify({'status': 'error', 'message': 'No se recibieron archivos.'}), 400
 
-        # --- Lógica para preparar el contenido para Gemini (AHORA EN EL ORDEN CORRECTO) ---
         content_for_ai = []
         files_for_drive = []
         prompt = f"""INSTRUCCIÓN CRÍTICA: Recibirás un lote de {len(image_files)} imágenes que pertenecen a la MISMA publicación o contenido. Tu tarea es actuar como un analista de datos y consolidar toda la información que encuentres en UN ÚNICO objeto JSON. REGLAS DE CONSOLIDACIÓN: 1. Examina TODAS las imágenes antes de responder. 2. Si una misma métrica (ej: 'likes') aparece en varias imágenes, utiliza el valor numérico más alto y más completo que encuentres. 3. Rellena cada campo del JSON con la mejor información disponible entre todas las imágenes. 4. ¡IMPORTANTE! Convierte siempre abreviaturas ('K', 'M') a números completos (ej: 2.5K a 2500, 1.2M a 1200000). 5. Si después de examinar todas las imágenes, no encuentras NINGUNA métrica, debes explicar por qué en el campo 'extraction_notes'. Por ejemplo: "Las imágenes no contienen contadores numéricos visibles de métricas." 6. Tu respuesta DEBE ser ÚNICAMENTE el objeto JSON, sin ningún otro texto. El formato requerido es: {{"likes": null, "comments": null, "shares": null, "saves": null, "views": null, "reach": null, "link_clicks": null, "clicks_stickers": null, "extraction_notes": "Extracción exitosa."}}"""
@@ -119,14 +117,12 @@ def upload_file():
             files_for_drive.append((filepath, filename))
             content_for_ai.append(PIL.Image.open(filepath))
             
-        # --- Llamada a Gemini ---
         print("1. Empezando análisis con Gemini...")
         model = genai.GenerativeModel('gemini-1.5-flash-latest', generation_config=GenerationConfig(response_mime_type="application/json"))
         response = model.generate_content(content_for_ai)
         consolidated_metrics = json.loads(response.text)
         print("2. Análisis de Gemini completado.")
         
-        # --- Lógica de Google Drive ---
         print("3. Subiendo a Drive...")
         creds_drive = service_account.Credentials.from_service_account_info(GOOGLE_CREDS_DICT, scopes=SCOPES)
         drive_service = build('drive', 'v3', credentials=creds_drive)
@@ -139,7 +135,6 @@ def upload_file():
         )
         print("4. Subida a Drive completada.")
 
-        # --- Lógica de Google Sheets ---
         print("5. Guardando en Sheets...")
         creds_gspread = gspread.service_account_from_dict(GOOGLE_CREDS_DICT)
         workbook = creds_gspread.open_by_key(SHEET_ID)
@@ -157,15 +152,16 @@ def upload_file():
         sheet.append_row(new_row, table_range="A1")
         print("6. Guardado en Sheets completado. ¡Todo OK!")
 
+        # ESTE ES EL BLOQUE CORRECTO Y FINAL
         response_data = {
-    'status': 'success',
-    'message': 'Lote procesado y guardado.',
-    'processed_data': {
-        'metrics': consolidated_metrics,
-        'drive_folder_link': drive_folder_link
-    }
-}
-return jsonify(response_data), 200
+            'status': 'success',
+            'message': 'Lote procesado y guardado.',
+            'processed_data': {
+                'metrics': consolidated_metrics,
+                'drive_folder_link': drive_folder_link
+            }
+        }
+        return jsonify(response_data), 200
 
     except google_exceptions.RetryError as e:
         print(f"!!! ERROR DE API DE GOOGLE: {e}")
