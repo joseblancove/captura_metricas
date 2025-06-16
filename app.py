@@ -86,7 +86,7 @@ REGLAS DE CONSOLIDACIÓN:
 6. Tu respuesta DEBE ser ÚNICAMENTE el objeto JSON, sin ningún otro texto.
 
 El formato requerido es:
-{{"likes": null, "comments": null, "shares": null, "saves": null, "views": null, "reach": null, "extraction_notes": "Extracción exitosa."}}
+{{"likes": null, "comments": null, "shares": null, "saves": null, "views": null, "reach": null, "link_clicks": null, "clicks_stickers": null, "extraction_notes": "Extracción exitosa."}}
 """
         content_for_ai.append(prompt)
         for image_file in image_files:
@@ -107,20 +107,64 @@ El formato requerido es:
         workbook = creds_gspread.open_by_key(SHEET_ID)
         sheet = workbook.worksheet(WORKSHEET_NAME)
         
-        # ... (lógica para crear la fila y guardarla no cambia) ...
+# --- PREPARAMOS LA NUEVA FILA CON 17 COLUMNAS ---
+        # Obtenemos el nuevo campo del formulario
+        organic_paid = request.form.get('organic_paid', 'Organic')
+
+        # NOTA: En la columna 'image_link', guardaremos el enlace a la CARPETA de Drive.
+        # Esto es más robusto ya que a menudo subes varias capturas, 
+        # y así tienes toda la evidencia en un solo lugar.
+        evidence_link = drive_folder_link
+
         new_row = [
-            datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), campaign, influencer,
-            platform, format_type, content_id,
-            consolidated_metrics.get('likes'), consolidated_metrics.get('comments'),
-            consolidated_metrics.get('shares'), consolidated_metrics.get('saves'),
-            consolidated_metrics.get('views'), consolidated_metrics.get('reach'),
-            drive_folder_link,
+            # 1. timestamp
+            datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            # 2. campaign_name
+            campaign,
+            # 3. influencer_name
+            influencer,
+            # 4. platform
+            platform,
+            # 5. format
+            format_type,
+            # 6. content_id
+            content_id,
+            # 7. Organic_Paid (NUEVO)
+            organic_paid,
+            # 8. Reach
+            consolidated_metrics.get('reach'),
+            # 9. Views
+            consolidated_metrics.get('views'),
+            # 10. Likes
+            consolidated_metrics.get('likes'),
+            # 11. Comments
+            consolidated_metrics.get('comments'),
+            # 12. Saved
+            consolidated_metrics.get('saves'),
+            # 13. Shares
+            consolidated_metrics.get('shares'),
+            # 14. Link_Clicks (NUEVO)
+            consolidated_metrics.get('link_clicks'),
+            # 15. Clicks_Stickers (NUEVO)
+            consolidated_metrics.get('clicks_stickers'),
+            # 16. image_link (es el link a la carpeta de Drive)
+            evidence_link,
+            # 17. extraction_notes
             consolidated_metrics.get('extraction_notes')
         ]
+        
         sheet.append_row(new_row, table_range="A1")
 
-        return jsonify({'status': 'success', 'message': 'Lote procesado, subido a Drive y guardado en Sheets.'}), 200
-
+        # MEJORA DE FEEDBACK: Devolvemos los datos procesados al cliente
+        response_data = {
+            'status': 'success',
+            'message': 'Datos procesados y guardados exitosamente.',
+            'processed_data': {
+                'metrics': consolidated_metrics,
+                'drive_folder_link': evidence_link
+            }
+        }
+        return jsonify(response_data), 200
     except google_exceptions.RetryError as e:
         return jsonify({'status': 'error', 'message': 'El servicio de IA está sobrecargado. Inténtalo más tarde.'}), 503
     except Exception as e:

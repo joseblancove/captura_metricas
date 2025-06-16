@@ -105,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('influencer_name', document.getElementById('influencer').value);
         formData.append('platform', document.getElementById('platform').value);
         formData.append('format', document.getElementById('format').value);
+        formData.append('organic_paid', document.getElementById('organic_paid').value);
         formData.append('content_id', document.getElementById('content_id').value);
         
         // Ahora añadimos todas las imágenes al mismo paquete
