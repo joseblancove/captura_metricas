@@ -83,12 +83,101 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadBtn.style.display = fileQueue.length > 0 ? 'block' : 'none';
     }
 
-    async function processAndConsolidate() {
-        uploadBtn.disabled = true;
-        uploadBtn.textContent = 'Analizando y Consolidando...';
-        statusMessage.textContent = `Enviando ${fileQueue.length} imágenes a la IA...`;
-        statusMessage.className = 'alert info-alert';
-        statusMessage.style.display = 'block';
+// En static/app.js
+
+// ... (todo el código anterior se mantiene igual) ...
+
+// --- NUEVA FUNCIÓN PARA MOSTRAR LA TARJETA DE ÉXITO ---
+function displaySuccessSummary(processedData) {
+    const summaryContainer = document.getElementById('success-summary');
+    const metrics = processedData.metrics;
+    const driveLink = processedData.drive_folder_link;
+
+    // Mapeo de métricas a iconos de Font Awesome
+    const icons = {
+        likes: 'fa-thumbs-up',
+        comments: 'fa-comments',
+        shares: 'fa-share-square',
+        saves: 'fa-bookmark',
+        views: 'fa-eye',
+        reach: 'fa-users'
+    };
+
+    let metricsHtml = '';
+    for (const key in metrics) {
+        if (Object.prototype.hasOwnProperty.call(metrics, key) && icons[key] && metrics[key] !== null) {
+            metricsHtml += `
+                <div class="metric-box">
+                    <i class="fas ${icons[key]}"></i>
+                    <div class="metric-label">${key}</div>
+                    <div class="metric-value">${Number(metrics[key]).toLocaleString('es-ES')}</div>
+                </div>
+            `;
+        }
+    }
+
+    summaryContainer.innerHTML = `
+        <h2 class="summary-title"><i class="fas fa-check-circle"></i>¡Publicación Registrada!</h2>
+        <div class="metrics-grid">${metricsHtml}</div>
+        <div class="action-buttons">
+            <a href="${driveLink}" target="_blank" title="Abrir carpeta con las capturas">
+                <i class="fab fa-google-drive"></i> Ver en Drive
+            </a>
+            <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID_REPLACE_ME}" target="_blank" title="Abrir la base de datos">
+                <i class="fas fa-table"></i> Ver en Sheets
+            </a>
+        </div>
+    `;
+
+    // Ocultamos el formulario y mostramos el resumen
+    document.getElementById('metric-form').style.display = 'none';
+    document.getElementById('upload-section').style.display = 'none';
+    summaryContainer.style.display = 'block';
+}
+
+// --- FUNCIÓN PRINCIPAL DE PROCESAMIENTO (REEMPLAZAR LA EXISTENTE) ---
+async function processAndConsolidate() {
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = 'Analizando y Consolidando...';
+    statusMessage.textContent = `Enviando ${fileQueue.length} imágenes a la IA...`;
+    statusMessage.className = 'alert info-alert';
+    statusMessage.style.display = 'block';
+
+    const formData = new FormData();
+    // (Esta parte de construir el formData se mantiene igual)
+    formData.append('client_name', document.getElementById('client_name').value);
+    formData.append('campaign_name', document.getElementById('campaign_name').value);
+    formData.append('influencer_name', document.getElementById('influencer').value);
+    formData.append('platform', document.getElementById('platform').value);
+    formData.append('format', document.getElementById('format').value);
+    formData.append('organic_paid', document.getElementById('organic_paid').value);
+    formData.append('content_id', document.getElementById('content_id').value);
+    fileQueue.forEach(file => { formData.append('metric_images[]', file, file.name); });
+
+    try {
+        const response = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await response.json();
+        if (response.ok && data.status === 'success') {
+            statusMessage.style.display = 'none'; // Ocultamos el mensaje verde simple
+            displaySuccessSummary(data.processed_data); // Mostramos nuestra nueva tarjeta
+
+            // Programamos el reinicio automático después de 10 segundos
+            setTimeout(() => {
+                document.getElementById('success-summary').style.display = 'none';
+                document.getElementById('metric-form').style.display = 'flex';
+                resetToInitialState();
+            }, 10000); // 10000 milisegundos = 10 segundos
+
+        } else {
+            throw new Error(data.message || 'Error desconocido del servidor.');
+        }
+    } catch (error) {
+        statusMessage.textContent = `Error: ${error.message}`;
+        statusMessage.className = 'alert error-alert';
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Analizar y Consolidar Métricas';
+    }
+}
 
         const formData = new FormData();
         // AÑADIMOS TODOS LOS CAMPOS DEL FORMULARIO
