@@ -157,7 +157,15 @@ def upload_file():
         sheet.append_row(new_row, table_range="A1")
         print("6. Guardado en Sheets completado. ¡Todo OK!")
 
-        return jsonify({'status': 'success', 'message': 'Lote procesado y guardado.'}), 200
+        response_data = {
+    'status': 'success',
+    'message': 'Lote procesado y guardado.',
+    'processed_data': {
+        'metrics': consolidated_metrics,
+        'drive_folder_link': drive_folder_link
+    }
+}
+return jsonify(response_data), 200
 
     except google_exceptions.RetryError as e:
         print(f"!!! ERROR DE API DE GOOGLE: {e}")
