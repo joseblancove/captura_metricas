@@ -1,4 +1,9 @@
-// static/app.js - v15 (FINAL CON TARJETA DE ÉXITO)
+// static/app.js - v16 (VERSIÓN FINAL DEFINITIVA)
+
+// --- CONFIGURACIÓN ---
+// ¡IMPORTANTE! REEMPLAZA ESTO CON EL ID REAL DE TU GOOGLE SHEET
+const SHEET_ID = '1JWfRnV15tUmBdKY-xTRJooUHJ8ORhGd1EfijvQgYDwQ'; 
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- Referencias a Elementos del DOM ---
     const form = document.getElementById('metric-form');
@@ -82,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         resetBtn.style.display = 'none';
         statusMessage.style.display = 'none';
         mainTitle.textContent = 'Registrar Contenido';
-        form.style.display = 'flex'; // Asegurarse que el form es visible
+        form.style.display = 'flex';
     }
 
     function renderFileList() {
@@ -101,16 +106,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function displaySuccessSummary(processedData) {
         const metrics = processedData.metrics;
         const driveLink = processedData.drive_folder_link;
-        const SHEET_ID = 'TU_SHEET_ID_AQUÍ'; // <-- ¡IMPORTANTE! PON TU SHEET ID AQUÍ
-
+        
         const icons = {
             likes: 'fa-thumbs-up', comments: 'fa-comments', shares: 'fa-share-square',
             saves: 'fa-bookmark', views: 'fa-eye', reach: 'fa-users'
         };
 
         let metricsHtml = '';
-        for (const key in metrics) {
-            if (Object.prototype.hasOwnProperty.call(metrics, key) && icons[key] && metrics[key] !== null) {
+        const relevantMetrics = ['reach', 'views', 'likes', 'comments', 'shares', 'saves'];
+        relevantMetrics.forEach(key => {
+            if (metrics[key] !== null && metrics[key] !== undefined) {
                 metricsHtml += `
                     <div class="metric-box">
                         <i class="fas ${icons[key]}"></i>
@@ -119,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `;
             }
-        }
+        });
 
         summaryContainer.innerHTML = `
             <h2 class="summary-title"><i class="fas fa-check-circle"></i>¡Publicación Registrada!</h2>
@@ -128,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <a href="${driveLink}" target="_blank" title="Abrir carpeta con las capturas">
                     <i class="fab fa-google-drive"></i> Ver en Drive
                 </a>
-                <a href="https://docs.google.com/spreadsheets/d/${1JWfRnV15tUmBdKY-xTRJooUHJ8ORhGd1EfijvQgYDwQ}" target="_blank" title="Abrir la base de datos">
+                <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}" target="_blank" title="Abrir la base de datos">
                     <i class="fas fa-table"></i> Ver en Sheets
                 </a>
             </div>
