@@ -91,6 +91,7 @@ def index():
 def upload_file():
     filepaths_to_delete = []
     try:
+        # --- Obtención de datos del formulario ---
         client_name = request.form['client_name']
         campaign_name = request.form['campaign_name']
         influencer_name = request.form['influencer_name']
@@ -103,6 +104,7 @@ def upload_file():
         if not image_files:
             return jsonify({'status': 'error', 'message': 'No se recibieron archivos.'}), 400
 
+        # --- Lógica de Gemini (sin cambios) ---
         content_for_ai, files_for_drive = [], []
         prompt = f"""INSTRUCCIÓN CRÍTICA: Recibirás un lote de {len(image_files)} imágenes que pertenecen a la MISMA publicación o contenido. Tu tarea es actuar como un analista de datos y consolidar toda la información que encuentres en UN ÚNICO objeto JSON. REGLAS DE CONSOLIDACIÓN: 1. Examina TODAS las imágenes antes de responder. 2. Si una misma métrica (ej: 'likes') aparece en varias imágenes, utiliza el valor numérico más alto y más completo que encuentres. 3. Rellena cada campo del JSON con la mejor información disponible entre todas las imágenes. 4. ¡IMPORTANTE! Convierte siempre abreviaturas ('K', 'M') a números completos (ej: 2.5K a 2500, 1.2M a 1200000). 5. Si después de examinar todas las imágenes, no encuentras NINGUNA métrica, debes explicar por qué en el campo 'extraction_notes'. Por ejemplo: "Las imágenes no contienen contadores numéricos visibles de métricas." 6. Tu respuesta DEBE ser ÚNICAMENTE el objeto JSON, sin ningún otro texto. El formato requerido es: {{"likes": null, "comments": null, "shares": null, "saves": null, "views": null, "reach": null, "link_clicks": null, "clicks_stickers": null, "extraction_notes": "Extracción exitosa."}}"""
         
@@ -119,6 +121,7 @@ def upload_file():
         response = model.generate_content(content_for_ai)
         consolidated_metrics = json.loads(response.text)
         
+        # --- Lógica de Google Drive (sin cambios) ---
         creds_drive = service_account.Credentials.from_service_account_info(GOOGLE_CREDS_DICT, scopes=SCOPES)
         drive_service = build('drive', 'v3', credentials=creds_drive)
         post_folder_name = f"{content_id or 'General'} - {datetime.datetime.now().strftime('%Y-%m-%d_%H%M')}"
@@ -129,18 +132,31 @@ def upload_file():
             post_folder_name=post_folder_name, files_to_upload=files_for_drive
         )
 
+        # --- Lógica de Google Sheets (CON LA CORRECCIÓN) ---
         creds_gspread = gspread.service_account_from_dict(GOOGLE_CREDS_DICT)
         workbook = creds_gspread.open_by_key(SHEET_ID)
         sheet = workbook.worksheet(WORKSHEET_NAME)
         
+        # ESTA ES LA LISTA QUE HEMOS CORREGIDO
         new_row = [
-            datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            campaign_name, influencer_name, platform, format_type, content_id,
-            organic_paid, consolidated_metrics.get('reach'), consolidated_metrics.get('views'),
-            consolidated_metrics.get('likes'), consolidated_metrics.get('comments'),
-            consolidated_metrics.get('saves'), consolidated_metrics.get('shares'),
-            consolidated_metrics.get('link_clicks'), consolidated_metrics.get('clicks_stickers'),
-            drive_folder_link, consolidated_metrics.get('extraction_notes')
+            datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # 1
+            client_name,                                           # 2 (AÑADIDO)
+            campaign_name,                                         # 3
+            influencer_name,                                       # 4
+            platform,                                              # 5
+            format_type,                                           # 6
+            content_id,                                            # 7
+            organic_paid,                                          # 8
+            consolidated_metrics.get('reach'),                     # 9
+            consolidated_metrics.get('views'),                     # 10
+            consolidated_metrics.get('likes'),                     # 11
+            consolidated_metrics.get('comments'),                  # 12
+            consolidated_metrics.get('saves'),                     # 13
+            consolidated_metrics.get('shares'),                    # 14
+            consolidated_metrics.get('link_clicks'),               # 15
+            consolidated_metrics.get('clicks_stickers'),           # 16
+            drive_folder_link,                                     # 17
+            consolidated_metrics.get('extraction_notes')           # 18
         ]
         sheet.append_row(new_row, table_range="A1")
 
@@ -157,7 +173,3 @@ def upload_file():
                 os.remove(path)
             except OSError as e:
                 print(f"Error al eliminar el archivo {path}: {e}")
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
