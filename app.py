@@ -91,18 +91,37 @@ def index():
 def upload_file():
     filepaths_to_delete = []
     try:
-        # --- Obtención de datos del formulario ---
-        client_name = request.form['client_name']
-        campaign_name = request.form['campaign_name']
-        influencer_name = request.form['influencer_name']
-        platform = request.form['platform']
-        format_type = request.form['format']
-        organic_paid = request.form['organic_paid']
-        content_id = request.form.get('content_id', '')
-        image_files = request.files.getlist('metric_images[]')
+        # ... (obtención de datos del form) ...
+        print("--- NUEVO ENVÍO RECIBIDO ---")
 
-        if not image_files:
-            return jsonify({'status': 'error', 'message': 'No se recibieron archivos.'}), 400
+        # ... (código para preparar los archivos) ...
+            
+        print("1. Empezando análisis con Gemini...")
+        model = genai.GenerativeModel('gemini-1.5-flash-latest', generation_config=GenerationConfig(response_mime_type="application/json"))
+        response = model.generate_content(content_for_ai)
+        consolidated_metrics = json.loads(response.text)
+        print("2. Análisis de Gemini completado.")
+
+        # ... (código para conectar a Drive) ...
+        
+        print("3. Subiendo a Drive...")
+        drive_folder_link = upload_files_to_structured_folders(
+            # ... parámetros ...
+        )
+        print("4. Subida a Drive completada.")
+
+        # ... (código para conectar a Sheets) ...
+        
+        print("5. Guardando en Sheets...")
+        sheet.append_row(new_row, table_range="A1")
+        print("6. Guardado en Sheets completado. ¡Todo OK!")
+
+        return jsonify({'status': 'success', 'message': 'Lote procesado y guardado.'}), 200
+
+    except Exception as e:
+        print(f"!!! ERROR ATRAPADO: {e}") # Añadimos un print en el error
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
         # --- Lógica de Gemini (sin cambios) ---
         content_for_ai, files_for_drive = [], []
