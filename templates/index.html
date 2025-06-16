@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extractor de Métricas v6 (Final)</title>
+    <title>Extractor de Métricas v14 (Estructura Drive)</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -13,8 +13,11 @@
             <h1 id="main-title">Registrar Contenido</h1>
             <form id="metric-form">
                 <div id="form-fields">
-                    <label for="campaign">Nombre de la Campaña:</label>
-                    <input type="text" id="campaign" name="campaign_name" placeholder="Ej: Papá Soltero" required>
+                    <label for="client_name">Nombre del Cliente:</label>
+                    <input type="text" id="client_name" name="client_name" placeholder="Ej: VIX" required>
+                    
+                    <label for="campaign_name">Nombre de la Campaña:</label>
+                    <input type="text" id="campaign_name" name="campaign_name" placeholder="Ej: Lanzamiento Papá Soltero" required>
                     
                     <label for="influencer">Nombre del Influencer:</label>
                     <input type="text" id="influencer" name="influencer_name" placeholder="Ej: Juan Pérez" required>
@@ -32,6 +35,7 @@
                             <option value="Paid">Paid</option>
                         </select>
                     </div>
+                    
                     <label for="content_id">Identificador de Contenido (Opcional):</label>
                     <input type="text" id="content_id" name="content_id" placeholder="Ej: Reel Semana 1">
                 </div>
@@ -41,13 +45,11 @@
 
             <div id="upload-section" style="display: none;">
                 <input type="file" id="file-input" multiple accept="image/*" style="display: none;">
-
                 <div id="drop-zone">
                     <p>Arrastra aquí TODAS las capturas para este contenido</p>
                     <p class="separator">o</p>
                     <button type="button" id="browse-btn" class="secondary-button">Selecciona Archivos</button>
                 </div>
-
                 <div id="file-list"></div>
                 <button type="button" id="upload-btn" class="cta-button" style="display: none;">Analizar y Consolidar Métricas</button>
             </div>

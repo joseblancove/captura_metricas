@@ -1,6 +1,4 @@
-// static/app.js - v9 (FINAL DEFINITIVA - con envío de datos corregido)
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Referencias a Elementos del DOM ---
     const form = document.getElementById('metric-form');
     const prepareBtn = document.getElementById('prepare-btn');
     const uploadSection = document.getElementById('upload-section');
@@ -12,10 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetBtn = document.getElementById('reset-btn');
     const statusMessage = document.getElementById('status-message');
     const mainTitle = document.getElementById('main-title');
-    
     let fileQueue = [];
 
-    // --- MANEJO DE DRAG & DROP Y SUBIDA MANUAL ---
     function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, preventDefaults, false));
     ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('highlight'), false));
@@ -42,7 +38,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- LÓGICA DE FLUJO DE TRABAJO ---
     prepareBtn.addEventListener('click', () => {
         if (!form.checkValidity()) { form.reportValidity(); return; }
         enterUploadMode();
@@ -55,13 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resetBtn.addEventListener('click', () => resetToInitialState());
 
-    // --- FUNCIONES DE ESTADO DE LA UI ---
     function enterUploadMode() {
         Array.from(form.elements).forEach(el => {
             if(el.tagName === 'INPUT' || el.tagName === 'SELECT') { el.disabled = true; }
         });
         prepareBtn.style.display = 'none';
-        mainTitle.textContent = `Cargando para: ${document.getElementById('campaign').value}`;
+        mainTitle.textContent = `Cargando para: ${document.getElementById('campaign_name').value}`;
         uploadSection.style.display = 'block';
     }
 
@@ -86,11 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
             fileItem.innerHTML = `<span>${file.name}</span><button type="button" class="delete-btn" data-file-id="${fileId}">&times;</button>`;
             fileList.appendChild(fileItem);
         });
-        if (fileQueue.length > 0) uploadBtn.style.display = 'block';
-        else uploadBtn.style.display = 'none';
+        uploadBtn.style.display = fileQueue.length > 0 ? 'block' : 'none';
     }
 
-    // --- FUNCIÓN PRINCIPAL DE PROCESAMIENTO ---
     async function processAndConsolidate() {
         uploadBtn.disabled = true;
         uploadBtn.textContent = 'Analizando y Consolidando...';
@@ -98,17 +90,16 @@ document.addEventListener('DOMContentLoaded', () => {
         statusMessage.className = 'alert info-alert';
         statusMessage.style.display = 'block';
 
-        // --- ¡CORRECCIÓN FINAL! ---
-        // Creamos un FormData vacío y añadimos TODOS los campos manualmente.
         const formData = new FormData();
-        formData.append('campaign_name', document.getElementById('campaign').value);
+        // AÑADIMOS TODOS LOS CAMPOS DEL FORMULARIO
+        formData.append('client_name', document.getElementById('client_name').value);
+        formData.append('campaign_name', document.getElementById('campaign_name').value);
         formData.append('influencer_name', document.getElementById('influencer').value);
         formData.append('platform', document.getElementById('platform').value);
         formData.append('format', document.getElementById('format').value);
         formData.append('organic_paid', document.getElementById('organic_paid').value);
         formData.append('content_id', document.getElementById('content_id').value);
         
-        // Ahora añadimos todas las imágenes al mismo paquete
         fileQueue.forEach(file => {
             formData.append('metric_images[]', file, file.name);
         });
